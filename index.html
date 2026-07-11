@@ -70,7 +70,7 @@
             border-bottom:1px solid #e1dfdd; border-right:1px solid #e8e6e3;
             padding:6px 10px;
             font-size:13px;
-            white-space: pre-wrap;      /* ✅ PERTAHANKAN LINE BREAK DAN WRAP */
+            white-space: pre-wrap;
             overflow: visible;
             text-overflow: clip;
             vertical-align: top;
@@ -154,6 +154,7 @@
         <div class="command-bar">
             <button class="cmd-btn" onclick="addNewItem()">➕ Item Baru</button><span class="cmd-sep"></span>
             <button class="cmd-btn" onclick="editSelectedItem()">✏️ Edit</button>
+            <button class="cmd-btn" onclick="copySelectedItems()">📋 Copy</button>
             <button class="cmd-btn" onclick="deleteSelectedItems()">🗑️ Hapus</button><span class="cmd-sep"></span>
             <button class="cmd-btn" onclick="openAddColumnPanel()">📌 Tambah Kolom</button>
             <button class="cmd-btn" onclick="openFilterPanel()">🔍 Filter</button>
@@ -374,10 +375,8 @@
                 }
             }
             const ref = await db.collection('lists').add({ name, favorite: false, columns, items: [] });
-            await loadAllLists();
-            await openList(ref.id);
-            closeCreateListModal();
-            showToast('List baru dibuat');
+            await loadAllLists(); await openList(ref.id);
+            closeCreateListModal(); showToast('List baru dibuat');
         }
 
         async function renameList(){ const n=prompt('Nama baru:',currentList.name); if(n) await db.collection('lists').doc(currentListId).update({name:n.trim()}); }
@@ -434,7 +433,7 @@
             if(col.type==='yesno') return val ? '<span style="background:var(--yes-green);color:white;padding:2px 8px;border-radius:10px;">✅ Ya</span>' : '<span style="background:var(--no-red);color:white;padding:2px 8px;border-radius:10px;">❌ Tidak</span>';
             if(col.type==='hyperlink') return `<a href="${esc(String(val))}" target="_blank">🔗</a>`;
             if(col.type==='date'){ try{return new Date(val).toLocaleDateString('id-ID');}catch{return esc(String(val));} }
-            return esc(String(val)); // untuk text, multiline, number, person
+            return esc(String(val));
         }
 
         function getChoiceColor(col,label){ if(!col||!col.choices) return '#0078d4'; const f=col.choices.find(c=>c.label===label); return f?f.color:'#0078d4'; }
@@ -540,6 +539,22 @@
         function toggleAll(cb) { getItems().forEach(i => cb.checked ? selectedItems.add(i.id) : selectedItems.delete(i.id)); renderAll(); }
         function toggleSelect(id, checked) { checked ? selectedItems.add(id) : selectedItems.delete(id); renderAll(); }
         function selectRow(e, itemId) { if (e.target.tagName === 'INPUT') return; if (e.ctrlKey || e.metaKey) toggleSelect(itemId, !selectedItems.has(itemId)); else { selectedItems.clear(); selectedItems.add(itemId); renderAll(); } }
+
+        // ========= COPY SELECTED ITEMS =========
+        async function copySelectedItems() {
+            if (selectedItems.size === 0) {
+                showToast('Pilih setidaknya satu item untuk disalin');
+                return;
+            }
+            const itemsToCopy = getItems().filter(i => selectedItems.has(i.id));
+            const newItems = itemsToCopy.map(item => {
+                const newId = 'i' + Date.now() + Math.random().toString(36).substr(2, 5);
+                return { ...item, id: newId };
+            });
+            const updatedItems = [...getItems(), ...newItems];
+            await updateList({ items: updatedItems });
+            showToast(`${newItems.length} item berhasil disalin`);
+        }
 
         // Kolom Panel
         function openAddColumnPanel() {
