@@ -12,7 +12,8 @@
             --text-primary: #1b1a19; --text-secondary: #605e5c; --accent: #0078d4;
             --accent-hover: #106ebe; --accent-light: #deecf9; --radius-sm: 4px; --radius-md: 6px;
             --radius-lg: 8px; --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
-            --sidebar-width: 260px; --panel-width: 460px; --command-height: 40px; --topbar-height: 48px;
+            --sidebar-width: 260px; --sidebar-collapsed-width: 48px; --panel-width: 460px;
+            --command-height: 40px; --topbar-height: 48px;
             --grid-header-height: 36px; --row-height: 38px;
             --opt-blue: #0078d4; --opt-green: #0b6a0b; --opt-red: #d13438;
             --opt-yellow: #f4b400; --opt-purple: #6b2fa0; --opt-gray: #605e5c;
@@ -20,10 +21,39 @@
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:var(--font); font-size:14px; color:var(--text-primary); background:var(--bg-body); display:flex; height:100vh; overflow:hidden; }
-        .sidebar { width:var(--sidebar-width); min-width:var(--sidebar-width); background:var(--bg-sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:10; }
-        .sidebar-header { padding:16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); }
+        .sidebar {
+            width:var(--sidebar-width); min-width:var(--sidebar-width);
+            background:var(--bg-sidebar); border-right:1px solid var(--border);
+            display:flex; flex-direction:column; z-index:10;
+            transition: width 0.2s ease, min-width 0.2s ease;
+            overflow:hidden;
+        }
+        .sidebar.collapsed {
+            width:var(--sidebar-collapsed-width); min-width:var(--sidebar-collapsed-width);
+        }
+        .sidebar.collapsed .sidebar-title,
+        .sidebar.collapsed .sidebar-nav,
+        .sidebar.collapsed .sidebar-new-btn,
+        .sidebar.collapsed .sidebar-section,
+        .sidebar.collapsed .sidebar-item span:not(.star):not(.list-delete),
+        .sidebar.collapsed .sidebar-item .star,
+        .sidebar.collapsed .sidebar-item .list-delete { display:none; }
+        .sidebar.collapsed .sidebar-header { justify-content:center; }
+        .sidebar.collapsed .sidebar-logo { margin:0; }
+        .sidebar-header {
+            padding:16px; display:flex; align-items:center; gap:8px;
+            border-bottom:1px solid var(--border); position:relative;
+        }
         .sidebar-logo { width:28px; height:28px; background:var(--opt-purple); border-radius:6px; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; }
         .sidebar-title { font-weight:600; font-size:16px; }
+        .sidebar-collapse-btn {
+            background:none; border:none; cursor:pointer; font-size:16px;
+            color:var(--text-secondary); padding:4px; border-radius:var(--radius-sm);
+            display:flex; align-items:center; justify-content:center;
+            margin-left:auto;
+        }
+        .sidebar.collapsed .sidebar-collapse-btn { position:static; margin-left:0; }
+        .sidebar-collapse-btn:hover { background:#e1dfdd; }
         .sidebar-nav { flex:1; overflow-y:auto; padding:8px; }
         .sidebar-section { font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; padding:12px 8px 4px; letter-spacing:0.5px; }
         .sidebar-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; margin-bottom:2px; }
@@ -33,6 +63,7 @@
         .sidebar-item:hover .star, .sidebar-item .star.fav { opacity:1; }
         .sidebar-new-btn { display:flex; align-items:center; gap:8px; margin:8px; padding:8px; cursor:pointer; color:var(--accent); font-weight:500; border:none; background:transparent; border-radius:var(--radius-sm); width:calc(100% - 16px); }
         .sidebar-new-btn:hover { background:var(--accent-light); }
+        .list-delete { margin-left:4px; color:var(--opt-red); cursor:pointer; font-size:12px; }
         .main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
         .top-bar { height:var(--topbar-height); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:8px; background:white; }
         .list-name-display { font-weight:600; font-size:16px; cursor:pointer; padding:4px 8px; border-radius:var(--radius-sm); }
@@ -102,8 +133,14 @@
     </style>
 </head>
 <body>
-    <aside class="sidebar">
-        <div class="sidebar-header"><div class="sidebar-logo">📋</div><div class="sidebar-title">Lists</div></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">📋</div>
+            <div class="sidebar-title">Lists</div>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ciutkan/Perluas Sidebar">
+                <span id="sidebarToggleIcon">«</span>
+            </button>
+        </div>
         <nav class="sidebar-nav" id="sidebarNav"></nav>
         <button class="sidebar-new-btn" onclick="createNewList()">➕ Buat List Baru</button>
     </aside>
@@ -185,6 +222,7 @@
         let currentSortCol = null, currentSortDir = 'asc', currentSearch = '';
         let editingCell = null;
         let currentChoices = [], selectedChoiceColor = '#0078d4';
+        let sidebarCollapsed = false;
 
         const $ = id => document.getElementById(id);
 
@@ -214,6 +252,19 @@
             });
         }
 
+        function toggleSidebar() {
+            sidebarCollapsed = !sidebarCollapsed;
+            const sidebar = $('sidebar');
+            const icon = $('sidebarToggleIcon');
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                icon.textContent = '»';
+            } else {
+                sidebar.classList.remove('collapsed');
+                icon.textContent = '«';
+            }
+        }
+
         async function loadAllLists() { const snap = await db.collection('lists').get(); allLists = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderSidebar(); }
 
         function renderSidebar() {
@@ -236,168 +287,114 @@
             return `<div class="sidebar-item ${isActive ? 'active' : ''}" onclick="openList('${l.id}')">
                 📋 ${esc(l.name)}
                 <span class="star ${isFav ? 'fav' : ''}" onclick="event.stopPropagation(); toggleFavorite('${l.id}')">⭐</span>
-                <span onclick="event.stopPropagation(); deleteList('${l.id}')" style="margin-left:4px;color:var(--opt-red);cursor:pointer;font-size:12px;" title="Hapus List">🗑️</span>
+                <span class="list-delete" onclick="event.stopPropagation(); deleteList('${l.id}')" title="Hapus List">🗑️</span>
             </div>`;
         }
 
-        async function toggleFavorite(listId) {
-            const list = allLists.find(l => l.id === listId);
-            if (list) {
-                list.favorite = !list.favorite;
-                await db.collection('lists').doc(listId).update({ favorite: list.favorite });
-                renderSidebar();
-            }
-        }
+        async function toggleFavorite(listId) { const list = allLists.find(l=>l.id===listId); if(list){ list.favorite=!list.favorite; await db.collection('lists').doc(listId).update({favorite:list.favorite}); renderSidebar(); } }
 
         async function deleteList(listId) {
-            if (!confirm('Hapus list ini beserta semua data? Tindakan ini tidak dapat dibatalkan.')) return;
+            if(!confirm('Hapus list ini beserta semua data?')) return;
             const wasCurrent = listId === currentListId;
-            if (wasCurrent) {
-                if (unsubscribe) unsubscribe();
-                currentList = null;
-                currentListId = null;
-                localStorage.removeItem('ms_last');
-                window.history.replaceState({}, '', '/');
-            }
+            if(wasCurrent){ if(unsubscribe) unsubscribe(); currentList=null; currentListId=null; localStorage.removeItem('ms_last'); window.history.replaceState({},'','/'); }
             await db.collection('lists').doc(listId).delete();
             await loadAllLists();
-            if (wasCurrent) {
-                if (allLists.length > 0) {
-                    await openList(allLists[0].id);
-                } else {
-                    await createDefaultList();
-                }
-            }
+            if(wasCurrent){ if(allLists.length>0) await openList(allLists[0].id); else await createDefaultList(); }
             showToast('List berhasil dihapus');
         }
 
         async function openList(listId) {
-            if (unsubscribe) unsubscribe();
-            currentListId = listId;
-            localStorage.setItem('ms_last', listId);
-            let recent = JSON.parse(localStorage.getItem('ms_recent') || '[]');
-            recent = [listId, ...recent.filter(id => id !== listId)].slice(0,10);
-            localStorage.setItem('ms_recent', JSON.stringify(recent));
-            window.history.replaceState({}, '', `?list=${listId}`);
-            unsubscribe = db.collection('lists').doc(listId).onSnapshot(doc => {
-                if (doc.exists) {
-                    currentList = { id: doc.id, ...doc.data() };
-                    currentList.columns.forEach(col => {
-                        if (col.type === 'choice' && col.choices && col.choices.length > 0 && typeof col.choices[0] === 'string') {
-                            col.choices = col.choices.map(label => ({ label, color: '#0078d4' }));
-                        }
-                    });
-                    if (!editingCell) {
-                        renderAll();
-                        renderSidebar();
-                    }
-                } else {
-                    alert('List telah dihapus');
-                    window.location.href = '/';
-                }
+            if(unsubscribe) unsubscribe();
+            currentListId=listId; localStorage.setItem('ms_last',listId);
+            let recent = JSON.parse(localStorage.getItem('ms_recent')||'[]');
+            recent = [listId,...recent.filter(id=>id!==listId)].slice(0,10);
+            localStorage.setItem('ms_recent',JSON.stringify(recent));
+            window.history.replaceState({},'',`?list=${listId}`);
+            unsubscribe = db.collection('lists').doc(listId).onSnapshot(doc=>{
+                if(doc.exists){
+                    currentList = {id:doc.id,...doc.data()};
+                    currentList.columns.forEach(col=>{ if(col.type==='choice' && col.choices && col.choices.length>0 && typeof col.choices[0]==='string') col.choices = col.choices.map(label=>({label,color:'#0078d4'})); });
+                    if(!editingCell){ renderAll(); renderSidebar(); }
+                }else{ alert('List dihapus'); window.location.href='/'; }
             });
-            selectedItems.clear();
-            currentSortCol = null;
-            currentSearch = '';
-            renderAll();
-            renderSidebar();
+            selectedItems.clear(); currentSortCol=null; currentSearch='';
+            renderAll(); renderSidebar();
         }
 
-        async function createDefaultList() {
+        async function createDefaultList(){
             const ref = await db.collection('lists').add({
-                name: 'Daftar Tugas', favorite: false,
-                columns: [
-                    { id: 'col-1', name: 'Judul', type: 'text', width: 200 },
-                    { id: 'col-2', name: 'Status', type: 'choice', width: 150, choices: [{ label: 'Belum', color: '#d13438' }, { label: 'Proses', color: '#f4b400' }, { label: 'Selesai', color: '#0b6a0b' }] },
-                    { id: 'col-3', name: 'Selesai?', type: 'yesno', width: 100 },
-                    { id: 'col-4', name: 'Tenggat', type: 'date', width: 140 }
+                name:'Daftar Tugas', favorite:false,
+                columns:[
+                    {id:'col-1',name:'Judul',type:'text',width:200},
+                    {id:'col-2',name:'Status',type:'choice',width:150,choices:[{label:'Belum',color:'#d13438'},{label:'Proses',color:'#f4b400'},{label:'Selesai',color:'#0b6a0b'}]},
+                    {id:'col-3',name:'Selesai?',type:'yesno',width:100},
+                    {id:'col-4',name:'Tenggat',type:'date',width:140}
                 ],
-                items: []
+                items:[]
             });
-            await loadAllLists();
-            await openList(ref.id);
+            await loadAllLists(); await openList(ref.id);
         }
 
-        async function createNewList() {
-            const name = prompt('Nama list baru:');
-            if (!name) return;
-            const ref = await db.collection('lists').add({
-                name,
-                favorite: false,
-                columns: [{ id: 'col-1', name: 'Judul', type: 'text', width: 200 }],
-                items: []
-            });
-            await loadAllLists();
-            await openList(ref.id);
-        }
+        async function createNewList(){ const name=prompt('Nama list:'); if(!name) return; const ref = await db.collection('lists').add({name,favorite:false,columns:[{id:'col-1',name:'Judul',type:'text',width:200}],items:[]}); await loadAllLists(); await openList(ref.id); }
+        async function renameList(){ const n=prompt('Nama baru:',currentList.name); if(n) await db.collection('lists').doc(currentListId).update({name:n.trim()}); }
 
-        async function renameList() {
-            const newName = prompt('Nama baru:', currentList.name);
-            if (newName && newName.trim()) {
-                await db.collection('lists').doc(currentListId).update({ name: newName.trim() });
-            }
-        }
-
-        function getCols() { return currentList?.columns || []; }
-        function getItems() {
+        function getCols(){ return currentList?.columns || []; }
+        function getItems(){
             let items = currentList?.items || [];
-            if (currentSearch) {
-                const s = currentSearch.toLowerCase();
-                items = items.filter(i => getCols().some(c => String(i[c.id] || '').toLowerCase().includes(s)));
-            }
-            if (currentSortCol) {
-                const col = getCols().find(c => c.id === currentSortCol);
-                items = [...items].sort((a, b) => {
-                    let va = a[currentSortCol] ?? '', vb = b[currentSortCol] ?? '';
-                    if (col?.type === 'number') { va = +va; vb = +vb; }
-                    else if (col?.type === 'date') { va = new Date(va).getTime() || 0; vb = new Date(vb).getTime() || 0; }
-                    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
-                    return (va < vb ? -1 : 1) * (currentSortDir === 'asc' ? 1 : -1);
+            if(currentSearch){ const s=currentSearch.toLowerCase(); items=items.filter(i=>getCols().some(c=>String(i[c.id]||'').toLowerCase().includes(s))); }
+            if(currentSortCol){
+                const col=getCols().find(c=>c.id===currentSortCol);
+                items=[...items].sort((a,b)=>{
+                    let va=a[currentSortCol]??'', vb=b[currentSortCol]??'';
+                    if(col?.type==='number'){va=+va;vb=+vb;}
+                    else if(col?.type==='date'){va=new Date(va).getTime()||0;vb=new Date(vb).getTime()||0;}
+                    else{va=String(va).toLowerCase();vb=String(vb).toLowerCase();}
+                    return (va<vb?-1:1)*(currentSortDir==='asc'?1:-1);
                 });
             }
             return items;
         }
 
-        function renderAll() {
-            if (!currentList || editingCell) return;
-            $('listNameDisplay').textContent = currentList.name;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        function renderAll(){
+            if(!currentList || editingCell) return;
+            $('listNameDisplay').textContent=currentList.name;
+            document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
             document.querySelector(`.tab[data-view="${currentView}"]`).classList.add('active');
-            $('gridContainer').style.display = currentView === 'grid' ? '' : 'none';
-            $('galleryContainer').classList.toggle('active', currentView === 'gallery');
-            if (currentView === 'grid') renderGrid();
+            $('gridContainer').style.display = currentView==='grid'?'':'none';
+            $('galleryContainer').classList.toggle('active', currentView==='gallery');
+            if(currentView==='grid') renderGrid();
             else renderGallery();
         }
 
-        function renderGrid() {
-            const cols = getCols(), items = getItems();
+        function renderGrid(){
+            const cols=getCols(), items=getItems();
             $('gridHead').innerHTML = `<tr>
                 <th style="width:40px;"><input type="checkbox" onchange="toggleAll(this)"></th>
                 <th style="width:40px;text-align:center;">#</th>
-                ${cols.map((c, idx) => `<th draggable="true" data-col-index="${idx}" style="width:${c.width || 150}px; position:relative;" ondragstart="handleDragStart(event,${idx})" ondragover="handleDragOver(event,${idx})" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,${idx})" ondragend="handleDragEnd()"><div class="th-inner" onclick="sortBy('${c.id}')"><span class="col-icon">${typeIcon(c.type)}</span><span class="col-name">${esc(c.name)}</span><span class="col-menu-btn" onclick="event.stopPropagation(); showCtxMenu(event,'${c.id}')">▾</span></div><div class="resize-handle" onmousedown="startResize(event,'${c.id}')"></div></th>`).join('')}
+                ${cols.map((c,idx)=>`<th draggable="true" data-col-index="${idx}" style="width:${c.width||150}px; position:relative;" ondragstart="handleDragStart(event,${idx})" ondragover="handleDragOver(event,${idx})" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,${idx})" ondragend="handleDragEnd()"><div class="th-inner" onclick="sortBy('${c.id}')"><span class="col-icon">${typeIcon(c.type)}</span><span class="col-name">${esc(c.name)}</span><span class="col-menu-btn" onclick="event.stopPropagation(); showCtxMenu(event,'${c.id}')">▾</span></div><div class="resize-handle" onmousedown="startResize(event,'${c.id}')"></div></th>`).join('')}
                 <th style="width:48px; text-align:center; cursor:pointer;" onclick="openAddColumnPanel()">➕</th>
             </tr>`;
-            $('gridBody').innerHTML = items.length === 0
-                ? `<tr><td colspan="${cols.length + 3}" style="text-align:center;padding:40px;">Klik "Item Baru" untuk memulai</td></tr>`
-                : items.map((item, idx) => `<tr class="${selectedItems.has(item.id) ? 'selected' : ''}" data-item-id="${item.id}" onclick="handleRowClick(event,'${item.id}')"><td><input type="checkbox" ${selectedItems.has(item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleSelect('${item.id}',this.checked)"></td><td style="text-align:center;color:gray;">${idx + 1}</td>${cols.map(c => `<td data-item-id="${item.id}" data-col-id="${c.id}" onclick="startEditingCell(this,'${item.id}','${c.id}')">${formatCell(c, item[c.id])}</td>`).join('')}<td></td></tr>`).join('');
+            $('gridBody').innerHTML = items.length===0
+                ? `<tr><td colspan="${cols.length+3}" style="text-align:center;padding:40px;">Klik "Item Baru" untuk memulai</td></tr>`
+                : items.map((item,idx)=>`<tr class="${selectedItems.has(item.id)?'selected':''}" data-item-id="${item.id}" onclick="handleRowClick(event,'${item.id}')"><td><input type="checkbox" ${selectedItems.has(item.id)?'checked':''} onclick="event.stopPropagation(); toggleSelect('${item.id}',this.checked)"></td><td style="text-align:center;color:gray;">${idx+1}</td>${cols.map(c=>`<td data-item-id="${item.id}" data-col-id="${c.id}" onclick="startEditingCell(this,'${item.id}','${c.id}')">${formatCell(c,item[c.id])}</td>`).join('')}<td></td></tr>`).join('');
         }
 
-        function renderGallery() {
-            const cols = getCols(), items = getItems();
-            $('galleryContainer').innerHTML = items.map(item => `<div class="gallery-card ${selectedItems.has(item.id) ? 'selected' : ''}" onclick="selectRow(event,'${item.id}')"><strong>${esc(String(item[cols[0]?.id] || ''))}</strong><div style="font-size:12px;color:gray;">${cols.slice(1).map(c => `${c.name}: ${formatCell(c, item[c.id])}`).join(' · ')}</div></div>`).join('');
+        function renderGallery(){
+            const cols=getCols(), items=getItems();
+            $('galleryContainer').innerHTML = items.map(item=>`<div class="gallery-card ${selectedItems.has(item.id)?'selected':''}" onclick="selectRow(event,'${item.id}')"><strong>${esc(String(item[cols[0]?.id]||''))}</strong><div style="font-size:12px;color:gray;">${cols.slice(1).map(c=>`${c.name}: ${formatCell(c,item[c.id])}`).join(' · ')}</div></div>`).join('');
         }
 
-        function formatCell(col, val) {
-            if (val === undefined || val === null || val === '') return '<span style="color:#aaa;">Kosong</span>';
-            if (col.type === 'choice') { const color = getChoiceColor(col, val); return `<span style="background:${color};color:white;padding:2px 8px;border-radius:10px;">${esc(String(val))}</span>`; }
-            if (col.type === 'yesno') return val ? '<span style="background:var(--yes-green);color:white;padding:2px 8px;border-radius:10px;">✅ Ya</span>' : '<span style="background:var(--no-red);color:white;padding:2px 8px;border-radius:10px;">❌ Tidak</span>';
-            if (col.type === 'hyperlink') return `<a href="${esc(String(val))}" target="_blank">🔗</a>`;
-            if (col.type === 'date') { try { return new Date(val).toLocaleDateString('id-ID'); } catch { return esc(String(val)); } }
+        function formatCell(col,val){
+            if(val===undefined||val===null||val==='') return '<span style="color:#aaa;">Kosong</span>';
+            if(col.type==='choice'){ const color=getChoiceColor(col,val); return `<span style="background:${color};color:white;padding:2px 8px;border-radius:10px;">${esc(String(val))}</span>`; }
+            if(col.type==='yesno') return val ? '<span style="background:var(--yes-green);color:white;padding:2px 8px;border-radius:10px;">✅ Ya</span>' : '<span style="background:var(--no-red);color:white;padding:2px 8px;border-radius:10px;">❌ Tidak</span>';
+            if(col.type==='hyperlink') return `<a href="${esc(String(val))}" target="_blank">🔗</a>`;
+            if(col.type==='date'){ try{return new Date(val).toLocaleDateString('id-ID');}catch{return esc(String(val));} }
             return esc(String(val));
         }
 
-        function getChoiceColor(col, label) { if (!col || !col.choices) return '#0078d4'; const f = col.choices.find(c => c.label === label); return f ? f.color : '#0078d4'; }
-        function typeIcon(t) { return { text: '🔤', multiline: '📝', number: '🔢', choice: '🏷️', date: '📅', yesno: '☑️', person: '👤', hyperlink: '🔗' }[t] || '📄'; }
+        function getChoiceColor(col,label){ if(!col||!col.choices) return '#0078d4'; const f=col.choices.find(c=>c.label===label); return f?f.color:'#0078d4'; }
+        function typeIcon(t){ return {text:'🔤',multiline:'📝',number:'🔢',choice:'🏷️',date:'📅',yesno:'☑️',person:'👤',hyperlink:'🔗'}[t]||'📄'; }
 
         // ========= EDIT LANGSUNG (STABIL) =========
         function startEditingCell(td, itemId, colId) {
@@ -409,12 +406,11 @@
             if (!item) return;
             const col = getCols().find(c => c.id === colId);
             if (!col) return;
-
             const oldValue = item[colId];
             td.classList.add('editing');
             let inputHTML;
             if (col.type === 'choice') {
-                inputHTML = `<select class="edit-input">${(col.choices || []).map(o => `<option value="${esc(o.label)}" ${oldValue === o.label ? 'selected' : ''}>${esc(o.label)}</option>`)}</select>`;
+                inputHTML = `<select class="edit-input">${(col.choices||[]).map(o => `<option value="${esc(o.label)}" ${oldValue === o.label ? 'selected' : ''}>${esc(o.label)}</option>`)}</select>`;
             } else if (col.type === 'yesno') {
                 inputHTML = `<select class="edit-input"><option value="true" ${oldValue ? 'selected' : ''}>Ya</option><option value="false" ${!oldValue ? 'selected' : ''}>Tidak</option></select>`;
             } else {
@@ -424,9 +420,7 @@
             const input = td.querySelector('.edit-input');
             input.focus();
             if (col.type !== 'choice' && col.type !== 'yesno') input.select();
-
             editingCell = { itemId, colId, td, col, oldValue };
-
             if (col.type === 'choice' || col.type === 'yesno') {
                 input.addEventListener('change', () => saveEditingCell());
             }
@@ -444,7 +438,6 @@
             if (!input) { editingCell = null; return; }
             let newVal = input.value;
             if (col.type === 'yesno') newVal = newVal === 'true';
-
             const updatedItems = getItems().map(i => i.id === itemId ? { ...i, [colId]: newVal } : i);
             currentList.items = updatedItems;
             updateList({ items: updatedItems });
@@ -488,19 +481,14 @@
         }
 
         function handleDocumentClick(e) {
-            if (editingCell && !editingCell.td.contains(e.target)) saveEditingCell();
+            if (editingCell && !editingCell.td.contains(e.target) && e.target.tagName !== 'OPTION') saveEditingCell();
             hideCtxMenu();
         }
 
-        function handleGlobalKeyDown(e) {
-            if (e.key === 'Escape' && editingCell) cancelEditing();
-        }
+        function handleGlobalKeyDown(e) { if (e.key === 'Escape' && editingCell) cancelEditing(); }
 
         function handleRowClick(e, itemId) {
-            if (e.target.tagName === 'TD' && e.target.dataset.itemId) {
-                e.stopPropagation();
-                return;
-            }
+            if (e.target.tagName === 'TD' && e.target.dataset.itemId) { e.stopPropagation(); return; }
             if (e.target.tagName === 'INPUT') return;
             if (e.ctrlKey || e.metaKey) toggleSelect(itemId, !selectedItems.has(itemId));
             else { selectedItems.clear(); selectedItems.add(itemId); renderAll(); }
@@ -510,7 +498,7 @@
         function toggleSelect(id, checked) { checked ? selectedItems.add(id) : selectedItems.delete(id); renderAll(); }
         function selectRow(e, itemId) { if (e.target.tagName === 'INPUT') return; if (e.ctrlKey || e.metaKey) toggleSelect(itemId, !selectedItems.has(itemId)); else { selectedItems.clear(); selectedItems.add(itemId); renderAll(); } }
 
-        // Column operations
+        // Kolom Panel
         function openAddColumnPanel() {
             $('columnPanelTitle').textContent = 'Tambah Kolom';
             $('editColId').value = '';
@@ -569,7 +557,7 @@
             showToast(colId ? 'Kolom diperbarui' : 'Kolom ditambahkan');
         }
 
-        // Item panel
+        // Item Panel
         function addNewItem() { const cols = getCols(); const emptyItem = { id: 'i' + Date.now() }; cols.forEach(c => { emptyItem[c.id] = c.type === 'yesno' ? false : ''; }); openItemPanel(null, emptyItem); }
         function editSelectedItem() { if (selectedItems.size !== 1) { showToast('Pilih satu item'); return; } const itemId = [...selectedItems][0]; const item = getItems().find(i => i.id === itemId); if (item) openItemPanel(itemId, item); }
         function openItemPanel(editItemId, itemData) {
@@ -606,14 +594,14 @@
 
         async function deleteSelectedItems() { if (selectedItems.size === 0) return; if (!confirm(`Hapus ${selectedItems.size} item?`)) return; const newItems = getItems().filter(i => !selectedItems.has(i.id)); selectedItems.clear(); await updateList({ items: newItems }); showToast('Item dihapus'); }
 
-        // Filter
+        // Filter Panel
         function openFilterPanel() { const cols = getCols(); $('sortColSelect').innerHTML = '<option value="">-- Tidak diurutkan --</option>' + cols.map(c => `<option value="${c.id}" ${c.id === currentSortCol ? 'selected' : ''}>${esc(c.name)}</option>`).join(''); $('sortDirSelect').value = currentSortDir; $('searchInput').value = currentSearch; openPanel($('filterPanel')); }
         function applySort() { currentSortCol = $('sortColSelect').value || null; currentSortDir = $('sortDirSelect').value; if (!editingCell) renderAll(); }
         function applyFilter() { currentSearch = $('searchInput').value; if (!editingCell) renderAll(); }
         function clearFilters() { currentSortCol = null; currentSortDir = 'asc'; currentSearch = ''; $('searchInput').value = ''; $('sortColSelect').value = ''; renderAll(); closePanel(); }
         function closeFilterPanel() { $('filterPanel').classList.remove('open'); $('panelOverlay').classList.remove('show'); }
 
-        // Context menu
+        // Context Menu
         function showCtxMenu(e, colId) {
             e.stopPropagation();
             const menu = $('ctxMenu');
@@ -621,7 +609,6 @@
                 <div class="ctx-item" onclick="sortBy('${colId}','asc');hideCtxMenu()">Urutkan A → Z</div>
                 <div class="ctx-item" onclick="sortBy('${colId}','desc');hideCtxMenu()">Urutkan Z → A</div>
                 <div class="ctx-item" onclick="filterByColumn('${colId}');hideCtxMenu()">Filter berdasarkan kolom ini</div>
-                <div class="ctx-item" onclick="groupByColumn('${colId}');hideCtxMenu()">Grup berdasarkan kolom ini</div>
                 <div class="ctx-item" onclick="hideColumn('${colId}')">Sembunyikan Kolom</div>
                 <div class="ctx-item" onclick="openEditColumnPanel('${colId}');hideCtxMenu()">Edit Kolom</div>
                 <div class="ctx-item" onclick="deleteColumn('${colId}')">Hapus Kolom</div>
@@ -634,11 +621,10 @@
         function hideCtxMenu() { $('ctxMenu').style.display = 'none'; }
         function sortBy(colId, dir) { currentSortCol = colId; currentSortDir = dir || (currentSortDir === 'asc' ? 'desc' : 'asc'); if (!editingCell) renderAll(); }
         function filterByColumn(colId) { const col = getCols().find(c => c.id === colId); const val = prompt(`Filter ${col.name} mengandung:`); if (val) { currentSearch = val.toLowerCase(); if (!editingCell) renderAll(); } }
-        function groupByColumn(colId) { currentSortCol = colId; currentSortDir = 'asc'; if (!editingCell) renderAll(); showToast('Dikelompokkan berdasarkan ' + getCols().find(c => c.id === colId)?.name); }
         async function hideColumn(colId) { await updateList({ columns: getCols().filter(c => c.id !== colId) }); showToast('Kolom disembunyikan'); }
         async function deleteColumn(colId) { if (!confirm('Hapus kolom ini?')) return; await updateList({ columns: getCols().filter(c => c.id !== colId) }); showToast('Kolom dihapus'); }
 
-        // Drag & resize
+        // Drag & Resize
         let draggedColIndex = null, isResizing = false, resizeColId = null, resizeStartX = 0, startWidth = 0;
         function handleDragStart(e, idx) { draggedColIndex = idx; e.dataTransfer.effectAllowed = 'move'; e.target.closest('th').classList.add('dragging'); }
         function handleDragOver(e, idx) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (draggedColIndex !== idx) e.target.closest('th').classList.add('drag-over'); }
