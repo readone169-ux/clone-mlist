@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Microsoft Lists</title>
+    <!-- Favicon: logo ungu dengan huruf L -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236b2fa0'/%3E%3Ctext x='8' y='24' font-family='Arial,sans-serif' font-size='22' font-weight='bold' fill='white'%3EL%3C/text%3E%3C/svg%3E">
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
@@ -21,6 +23,7 @@
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:var(--font); font-size:14px; color:var(--text-primary); background:var(--bg-body); display:flex; height:100vh; overflow:hidden; }
+        /* Sidebar */
         .sidebar { width:var(--sidebar-width); min-width:var(--sidebar-width); background:var(--bg-sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:10; transition: width 0.2s ease, min-width 0.2s ease; overflow:hidden; }
         .sidebar.collapsed { width:var(--sidebar-collapsed-width); min-width:var(--sidebar-collapsed-width); }
         .sidebar.collapsed .sidebar-title, .sidebar.collapsed .sidebar-nav, .sidebar.collapsed .sidebar-new-btn, .sidebar.collapsed .sidebar-section, .sidebar.collapsed .sidebar-item span:not(.star):not(.list-delete), .sidebar.collapsed .sidebar-item .star, .sidebar.collapsed .sidebar-item .list-delete { display:none; }
@@ -439,7 +442,7 @@
         function getChoiceColor(col,label){ if(!col||!col.choices) return '#0078d4'; const f=col.choices.find(c=>c.label===label); return f?f.color:'#0078d4'; }
         function typeIcon(t){ return {text:'🔤',multiline:'📝',number:'🔢',choice:'🏷️',date:'📅',yesno:'☑️',person:'👤',hyperlink:'🔗'}[t]||'📄'; }
 
-        // ========= EDIT LANGSUNG (STABIL + MULTILINE) =========
+        // ========= EDIT LANGSUNG =========
         function startEditingCell(td, itemId, colId) {
             if (editingCell) { if (editingCell.td === td) return; saveEditingCell(); }
             const item = getItems().find(i => i.id === itemId);
@@ -542,10 +545,7 @@
 
         // ========= COPY SELECTED ITEMS =========
         async function copySelectedItems() {
-            if (selectedItems.size === 0) {
-                showToast('Pilih setidaknya satu item untuk disalin');
-                return;
-            }
+            if (selectedItems.size === 0) { showToast('Pilih setidaknya satu item untuk disalin'); return; }
             const itemsToCopy = getItems().filter(i => selectedItems.has(i.id));
             const newItems = itemsToCopy.map(item => {
                 const newId = 'i' + Date.now() + Math.random().toString(36).substr(2, 5);
