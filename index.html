@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Microsoft Lists</title>
-    <!-- Favicon: logo ungu dengan huruf L -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236b2fa0'/%3E%3Ctext x='8' y='24' font-family='Arial,sans-serif' font-size='22' font-weight='bold' fill='white'%3EL%3C/text%3E%3C/svg%3E">
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -146,7 +145,8 @@
             <span class="list-name-display" id="listNameDisplay" onclick="renameList()">Daftar Tugas</span>
             <div class="tab-bar">
                 <div class="tab active" data-view="grid" onclick="switchView('grid')">📊 Grid</div>
-                <div class="tab" data-view="gallery" onclick="switchView('gallery')">🖼️ Galeri</div>
+                <!-- Tombol Booking menggantikan Galeri -->
+                <div class="tab" onclick="openBooking()">📅 Booking</div>
             </div>
             <div class="actions-right">
                 <button class="btn-icon" onclick="shareList()" title="Bagikan">🔗</button>
@@ -243,6 +243,11 @@
         let sidebarCollapsed = false;
 
         const $ = id => document.getElementById(id);
+
+        // Fungsi untuk membuka halaman booking di tab baru
+        function openBooking() {
+            window.open('https://readone169-ux.github.io/book/', '_blank');
+        }
 
         async function init() {
             const urlParams = new URLSearchParams(window.location.search);
